@@ -34,7 +34,8 @@ export const getDesignerServices = (
   panelMetadata: IDesignerPanelMetadata | null,
   createFileSystemConnection: (connectionInfo: ConnectionCreationInfo, connectionName: string) => Promise<ConnectionCreationInfo>,
   vscode: WebviewApi<unknown>,
-  oauthRedirectUrl: string
+  oauthRedirectUrl: string,
+  hostVersion: string
 ): {
   connectionService: StandardConnectionService;
   connectorService: StandardConnectorService;
@@ -76,7 +77,7 @@ export const getDesignerServices = (
     });
   };
 
-  const httpClient = new HttpClient({ accessToken: authToken, baseUrl, apiHubBaseUrl: apiHubServiceDetails.baseUrl });
+  const httpClient = new HttpClient({ accessToken: authToken, baseUrl, apiHubBaseUrl: apiHubServiceDetails.baseUrl, hostVersion });
   const connectionService = new StandardConnectionService({
     baseUrl,
     apiVersion,
@@ -141,8 +142,7 @@ export const getDesignerServices = (
     schemaClient: {
       getWorkflowSwagger: (args) => {
         const workflowName = args.parameters.name;
-        const workflowSchemas = JSON.stringify(workflowDetails);
-        return Promise.resolve(workflowSchemas[workflowName] || {});
+        return Promise.resolve(workflowDetails[workflowName] || {});
       },
       getApimOperationSchema: (args: any) => {
         const { configuration, parameters, isInput } = args;
