@@ -13,7 +13,7 @@ import {
 } from '../../queries/connector';
 import { getOperationManifest } from '../../queries/operation';
 import type { DependencyInfo, NodeInputs, NodeOperation } from '../../state/operation/operationMetadataSlice';
-import type { VariableDeclaration } from '../../state/tokensSlice';
+import type { VariableDeclaration } from '../../state/tokens/tokensSlice';
 import type { WorkflowParameterDefinition } from '../../state/workflowparameters/workflowparametersSlice';
 import { isConnectionMultiAuthManagedIdentityType, isConnectionSingleAuthManagedIdentityType } from '../connectors/connections';
 import { buildOperationDetailsFromControls, loadInputValuesFromDefinition } from '../swagger/inputsbuilder';
@@ -88,7 +88,6 @@ import {
 export async function getDynamicValues(
   dependencyInfo: DependencyInfo,
   nodeInputs: NodeInputs,
-  nodeMetadata: any,
   operationInfo: OperationInfo,
   connectionReference: ConnectionReference | undefined,
   idReplacements: Record<string, string>,
@@ -105,8 +104,7 @@ export async function getDynamicValues(
       operationInfo.operationId,
       parameter?.alias,
       operationParameters,
-      dynamicState,
-      nodeMetadata
+      dynamicState
     );
   } else if (isLegacyDynamicValuesExtension(definition)) {
     const { connectorId } = operationInfo;
@@ -143,7 +141,6 @@ export async function getDynamicValues(
 export async function getDynamicSchema(
   dependencyInfo: DependencyInfo,
   nodeInputs: NodeInputs,
-  nodeMetadata: any,
   operationInfo: OperationInfo,
   connectionReference: ConnectionReference | undefined,
   variables: VariableDeclaration[] = [],
@@ -183,8 +180,7 @@ export async function getDynamicSchema(
             operationInfo.operationId,
             parameter?.alias,
             operationParameters,
-            dynamicState,
-            nodeMetadata
+            dynamicState
           );
           break;
       }
@@ -277,6 +273,8 @@ export async function getDynamicInputsFromSchema(
     },
     required: dynamicParameter.required,
     useAliasedIndexing: true,
+    excludeAdvanced: false,
+    excludeInternal: false,
   };
   const schemaProperties = new SchemaProcessor(processorOptions).getSchemaProperties(schema);
   let dynamicInputs: InputParameter[] = schemaProperties.map((schemaProperty) => ({
@@ -308,7 +306,6 @@ export async function getFolderItems(
   selectedValue: any | undefined,
   dependencyInfo: DependencyInfo,
   nodeInputs: NodeInputs,
-  _nodeMetadata: any,
   operationInfo: OperationInfo,
   connectionReference: ConnectionReference | undefined,
   idReplacements: Record<string, string>,
@@ -593,7 +590,7 @@ function loadUnknownManifestBasedParameters(
       } as ResolvedParameter;
       knownKeys.add(keyPrefix);
     }
-  } else if (!result[keyPrefix]) {
+  } else if (!result[keyPrefix] && !knownKeys.has(keyPrefix)) {
     // If it is an object, recurse down and find the other unknown values.
     Object.keys(input).forEach((key) => {
       // encode the key to match the paths of the known parameters.

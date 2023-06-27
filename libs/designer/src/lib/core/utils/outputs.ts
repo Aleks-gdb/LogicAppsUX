@@ -6,7 +6,7 @@ import { getConnectorWithSwagger } from '../queries/connections';
 import { getOperationManifest } from '../queries/operation';
 import type { DependencyInfo, NodeInputs, NodeOperation, NodeOutputs, OutputInfo } from '../state/operation/operationMetadataSlice';
 import { ErrorLevel, updateErrorDetails, clearDynamicOutputs, addDynamicOutputs } from '../state/operation/operationMetadataSlice';
-import { addDynamicTokens } from '../state/tokensSlice';
+import { addDynamicTokens } from '../state/tokens/tokensSlice';
 import type { WorkflowParameterDefinition } from '../state/workflowparameters/workflowparametersSlice';
 import { getBrandColorFromConnector, getIconUriFromConnector } from './card';
 import { getTokenExpressionValueForManifestBasedOperation } from './loops';
@@ -120,7 +120,9 @@ export const getUpdatedManifestForSplitOn = (manifest: OperationManifest, splitO
       throw new AssertionException(AssertionErrorCode.INVALID_SPLITON, invalidSplitOn);
     }
 
-    const isAliasPathParsingEnabled = manifest.properties.connectionReference?.referenceKeyFormat === ConnectionReferenceKeyFormat.OpenApi;
+    const isAliasPathParsingEnabled =
+      manifest.properties.connectionReference?.referenceKeyFormat === ConnectionReferenceKeyFormat.OpenApi ||
+      manifest.properties.connectionReference?.referenceKeyFormat === ConnectionReferenceKeyFormat.HybridTrigger;
     const parsedValue = ExpressionParser.parseTemplateExpression(splitOn, isAliasPathParsingEnabled);
     const properties: string[] = [];
     let manifestSection = updatedManifest.properties.outputs;
@@ -306,7 +308,9 @@ export const getUpdatedManifestForSchemaDependency = (manifest: OperationManifes
             }
           } else {
             // TODO - Add code to generate schema from value input
-            schemaToReplace = generateSchemaFromJsonString(segment.value);
+            try {
+              schemaToReplace = generateSchemaFromJsonString(segment.value);
+            } catch {} // eslint-disable-line no-empty
           }
           break;
 
@@ -406,7 +410,6 @@ export const loadDynamicOutputsInNode = async (
   connectionReference: ConnectionReference | undefined,
   outputDependencies: Record<string, DependencyInfo>,
   nodeInputs: NodeInputs,
-  nodeMetadata: any,
   settings: Settings,
   workflowParameters: Record<string, WorkflowParameterDefinition>,
   dispatch: Dispatch
@@ -423,7 +426,6 @@ export const loadDynamicOutputsInNode = async (
           const outputSchema = await getDynamicSchema(
             info,
             nodeInputs,
-            nodeMetadata,
             operationInfo,
             connectionReference,
             /* variables */ undefined,
@@ -470,7 +472,7 @@ export const loadDynamicOutputsInNode = async (
           const message = error.message as string;
           const errorMessage = getIntl().formatMessage(
             {
-              defaultMessage: `Failed to retrieve dynamic outputs, outputs of this operation might not be visible in subsequent actions. Error details: {message}`,
+              defaultMessage: `Failed to retrieve dynamic outputs. As a result, this operation's outputs might not be visible in subsequent actions. Error details: {message}`,
               description: 'Error message to show when loading dynamic outputs failed.',
             },
             {

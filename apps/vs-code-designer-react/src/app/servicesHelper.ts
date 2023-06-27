@@ -9,33 +9,35 @@ import {
   BaseGatewayService,
   StandardRunService,
   StandardArtifactService,
-  ApiManagementInstanceService,
+  BaseApiManagementService,
   BaseFunctionService,
 } from '@microsoft/designer-client-services-logic-apps';
 import type {
-  IApiHubServiceDetails,
+  ApiHubServiceDetails,
   ConnectionCreationInfo,
   ContentType,
   IHostService,
   IWorkflowService,
 } from '@microsoft/designer-client-services-logic-apps';
+import type { ManagedIdentity } from '@microsoft/utils-logic-apps';
 import { HTTP_METHODS, clone } from '@microsoft/utils-logic-apps';
 import type { ConnectionAndAppSetting, ConnectionsData, IDesignerPanelMetadata } from '@microsoft/vscode-extension';
 import { ExtensionCommand, HttpClient } from '@microsoft/vscode-extension';
+import type { QueryClient } from 'react-query';
 import type { WebviewApi } from 'vscode-webview';
 
 export const getDesignerServices = (
   baseUrl: string,
   apiVersion: string,
-  apiHubServiceDetails: IApiHubServiceDetails,
-  tenantId: string | undefined,
+  apiHubDetails: ApiHubServiceDetails,
   isLocal: boolean,
   connectionData: ConnectionsData,
   panelMetadata: IDesignerPanelMetadata | null,
   createFileSystemConnection: (connectionInfo: ConnectionCreationInfo, connectionName: string) => Promise<ConnectionCreationInfo>,
   vscode: WebviewApi<unknown>,
   oauthRedirectUrl: string,
-  hostVersion: string
+  hostVersion: string,
+  queryClient: QueryClient
 ): {
   connectionService: StandardConnectionService;
   connectorService: StandardConnectorService;
@@ -46,7 +48,7 @@ export const getDesignerServices = (
   workflowService: IWorkflowService;
   hostService: IHostService;
   runService: StandardRunService;
-  apimService: ApiManagementInstanceService;
+  apimService: BaseApiManagementService;
   functionService: BaseFunctionService;
 } => {
   let authToken = '',
@@ -56,7 +58,7 @@ export const getDesignerServices = (
     isStateful = false,
     connectionsData = { ...connectionData } ?? {};
 
-  const { subscriptionId = 'subscriptionId', resourceGroup, location } = apiHubServiceDetails;
+  const { subscriptionId = 'subscriptionId', resourceGroup, location } = apiHubDetails;
 
   const armUrl = 'https://management.azure.com';
 
@@ -77,13 +79,13 @@ export const getDesignerServices = (
     });
   };
 
-  const httpClient = new HttpClient({ accessToken: authToken, baseUrl, apiHubBaseUrl: apiHubServiceDetails.baseUrl, hostVersion });
+  const httpClient = new HttpClient({ accessToken: authToken, baseUrl, apiHubBaseUrl: apiHubDetails.baseUrl, hostVersion });
+  const apiHubServiceDetails = { ...apiHubDetails, httpClient, baseUrl, apiVersion };
   const connectionService = new StandardConnectionService({
     baseUrl,
     apiVersion,
     httpClient,
     apiHubServiceDetails,
-    tenantId,
     readConnections: () => Promise.resolve(connectionsData),
     writeConnection: (connectionAndSetting: ConnectionAndAppSetting) => {
       return addConnectionData(connectionAndSetting);
@@ -94,11 +96,12 @@ export const getDesignerServices = (
       },
     },
   });
-  const apimService = new ApiManagementInstanceService({
+  const apimService = new BaseApiManagementService({
     apiVersion: '2019-12-01',
     baseUrl,
     subscriptionId,
     httpClient,
+    queryClient,
   });
 
   const artifactService = new StandardArtifactService({
@@ -201,7 +204,7 @@ export const getDesignerServices = (
   });
 
   const functionService = new BaseFunctionService({
-    baseUrl,
+    baseUrl: armUrl,
     apiVersion,
     httpClient,
     subscriptionId,
@@ -231,6 +234,14 @@ export const getDesignerServices = (
         });
       }
     },
+    getAppIdentity: () => {
+      return {
+        principalId: '00000000-0000-0000-0000-000000000000',
+        tenantId: '00000000-0000-0000-0000-000000000000',
+        type: 'SystemAssigned',
+      } as ManagedIdentity;
+    },
+    isExplicitAuthRequiredForManagedIdentity: () => true,
   };
 
   const hostService: IHostService = {

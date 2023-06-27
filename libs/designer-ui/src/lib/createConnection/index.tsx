@@ -122,7 +122,7 @@ export const CreateConnection = (props: CreateConnectionProps): JSX.Element => {
     () => connectionParameterSets?.values[selectedParamSetIndex].parameters ?? {},
     [connectionParameterSets, selectedParamSetIndex]
   );
-  const isMultiAuth = useMemo(() => (connectionParameterSets?.values?.length ?? 0) > 1, [connectionParameterSets?.values]);
+  const isMultiAuth = useMemo(() => (connectionParameterSets?.values?.length ?? 0) > 0, [connectionParameterSets?.values]);
 
   const hasOnlyOnPremGateway = useMemo(
     () =>
@@ -132,7 +132,7 @@ export const CreateConnection = (props: CreateConnectionProps): JSX.Element => {
     [connectorCapabilities]
   );
 
-  const [enabledCapabilities, setEnabledCapabilities] = useState<Capabilities[]>([]);
+  const [enabledCapabilities, setEnabledCapabilities] = useState<Capabilities[]>([Capabilities.general, Capabilities.cloud]);
   const toggleCapability = useCallback(
     (capability: Capabilities) => {
       if (enabledCapabilities.includes(capability)) {
@@ -393,8 +393,8 @@ export const CreateConnection = (props: CreateConnectionProps): JSX.Element => {
   });
 
   const gatewayTooltipText = intl.formatMessage({
-    defaultMessage: 'Select this if you are configuring an on-prem connection',
-    description: 'Tooltip for on-prem gateway connection checkbox',
+    defaultMessage: "Select this checkbox if you're setting up an on-premises connection.",
+    description: 'Tooltip for the on-premises data gateway connection checkbox',
   });
 
   const legacyMultiAuthLabelText = intl.formatMessage({
@@ -571,27 +571,7 @@ export const CreateConnection = (props: CreateConnectionProps): JSX.Element => {
 
         {/* Connector Parameters */}
         {showConfigParameters &&
-          Object.entries(parametersByCapability['general'] ?? {})?.map(
-            ([key, parameter]: [string, ConnectionParameterSetParameter | ConnectionParameter]) => (
-              <UniversalConnectionParameter
-                key={key}
-                parameterKey={key}
-                parameter={parameter}
-                value={parameterValues[key]}
-                setValue={(val: any) => setParameterValues({ ...parameterValues, [key]: val })}
-                isLoading={isLoading}
-                selectedSubscriptionId={selectedSubscriptionId}
-                selectSubscriptionCallback={selectSubscriptionCallback}
-                availableGateways={availableGateways}
-                availableSubscriptions={availableSubscriptions}
-              />
-            )
-          )}
-
-        {/* Gateway-Specific Parameters */}
-        {showConfigParameters &&
-          enabledCapabilities.includes(Capabilities.gateway) &&
-          Object.entries(getParametersByCapability(Capabilities.gateway))?.map(
+          Object.entries(capabilityEnabledParameters)?.map(
             ([key, parameter]: [string, ConnectionParameterSetParameter | ConnectionParameter]) => (
               <UniversalConnectionParameter
                 key={key}
