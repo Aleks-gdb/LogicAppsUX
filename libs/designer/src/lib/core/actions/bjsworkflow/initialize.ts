@@ -274,10 +274,6 @@ export const getOutputParametersFromManifest = (
   };
 };
 
-export const getParsedManifest = (manifest: OperationManifest): ManifestParser => {
-  return new ManifestParser(manifest);
-};
-
 export const updateOutputsAndTokens = async (
   nodeId: string,
   operationInfo: NodeOperation,
