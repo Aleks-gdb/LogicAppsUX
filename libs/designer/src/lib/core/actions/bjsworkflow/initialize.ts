@@ -364,6 +364,8 @@ export const getInputDependencies = (
           filePickerInfo: {
             open: dynamicValues.extension.open,
             browse: dynamicValues.extension.browse,
+            fullTitlePath: 'fullyQualifiedDisplayName',
+            valuePath: 'value',
           },
           parameter: inputParameter,
         };
